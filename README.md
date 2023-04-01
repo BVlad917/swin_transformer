@@ -1,6 +1,7 @@
 # Swin Transformer
 
 Implementation of the [Swin Transformer](https://arxiv.org/abs/2103.14030) and [Swin Transformer V2](https://arxiv.org/abs/2111.09883) architectures.
+
 NB: Swin Transformer V2 has very few and easily implementable differences, so both of them are implemented here.
 
 ## Swin Transformer V1
