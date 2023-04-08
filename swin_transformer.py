@@ -1,6 +1,6 @@
 import torch
-from timm.models import trunc_normal_
 from torch import nn
+from timm.models.layers import trunc_normal_
 
 from stage_module import StageModule
 
