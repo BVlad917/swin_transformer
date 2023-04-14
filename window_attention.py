@@ -36,7 +36,9 @@ class WindowAttention(nn.Module):
         self.to_qkv = nn.Linear(input_dim, inner_dim * 3, bias=False)
         self.to_out = nn.Linear(inner_dim, input_dim)
         self.pos_embedding = nn.Parameter(torch.zeros(2 * window_size - 1, 2 * window_size - 1))
+        # (2 * WINDOW_SIZE - 1, 2 * WINDOW_SIZE - 1)
         self.relative_indices = get_relative_distances(window_size) + window_size - 1
+        # (WINDOW_SIZE ** 2, WINDOW_SIZE ** 2, 2)
 
         if shifted:
             displacement = window_size // 2
@@ -67,27 +69,27 @@ class WindowAttention(nn.Module):
         # function which maps q, k, v into appropriate representations for dot-product attention
         reshape_fn = lambda t: rearrange(t, "b (nw_h w_h) (nw_w w_w) (heads d) -> b heads (nw_h nw_w) (w_h w_w) d",
                                          w_h=self.window_size, w_w=self.window_size, heads=self.heads, d=self.head_dim)
-        q, k, v = map(reshape_fn, qkv)  # (B HEADS NUM_WINDOWS^2 WINDOW_SIZE^2 HEAD_DIM) each
+        q, k, v = map(reshape_fn, qkv)  # (B, HEADS, NUM_WINDOWS^2, WINDOW_SIZE^2, HEAD_DIM) each
 
         # scaled dot product between Q and K
-        dots = torch.einsum("b h w i d, b h w j d -> b h w i j", q,
-                            k)  # (B HEADS NUM_WINDOWS^2 WINDOW_SIZE^2 WINDOW_SIZE^2)
-        dots = dots * self.scale  # (B HEADS NUM_WINDOWS^2 WINDOW_SIZE^2 WINDOW_SIZE^2)
+        dots = torch.einsum("b h w i d, b h w j d -> b h w i j", q, k)
+        # (B HEADS NUM_WINDOWS^2 WINDOW_SIZE^2 WINDOW_SIZE^2)
+        dots = dots * self.scale  # (B, HEADS, NUM_WINDOWS^2, WINDOW_SIZE^2, WINDOW_SIZE^2)
 
         # add positional embeddings
         dots = dots + self.pos_embedding[self.relative_indices[:, :, 0], self.relative_indices[:, :, 1]]
-        # (B HEADS NUM_WINDOWS^2 WINDOW_SIZE^2 WINDOW_SIZE^2)
+        # (B, HEADS, NUM_WINDOWS^2, WINDOW_SIZE^2, WINDOW_SIZE^2)
 
         # apply the mask (if shifted), apply softmax, and apply dropout
         if self.shifted:
             dots[:, :, -nw_w:] += self.up_to_down_mask
             dots[:, :, nw_w - 1::nw_w] += self.left_to_right_mask
-        attn = dots.softmax(dim=-1)  # (B HEADS NUM_WINDOWS^2 WINDOW_SIZE^2 WINDOW_SIZE^2)
-        attn = self.attn_drop(attn)  # (B HEADS NUM_WINDOWS^2 WINDOW_SIZE^2 WINDOW_SIZE^2)
+        attn = dots.softmax(dim=-1)  # (B, HEADS, NUM_WINDOWS^2, WINDOW_SIZE^2, WINDOW_SIZE^2)
+        attn = self.attn_drop(attn)  # (B, HEADS, NUM_WINDOWS^2, WINDOW_SIZE^2, WINDOW_SIZE^2)
 
         # find the output of the attention mechanism, apply dropout, and rearrange back to initial shape
-        out = torch.einsum("b h w i j, b h w j d -> b h w i d", attn,
-                           v)  # (B HEADS NUM_WINDOWS^2 WINDOW_SIZE^2 HEAD_DIM)
+        out = torch.einsum("b h w i j, b h w j d -> b h w i d", attn, v)
+        # (B, HEADS, NUM_WINDOWS^2, WINDOW_SIZE^2, HEAD_DIM)
         out = rearrange(out, "b heads (nw_h nw_w) (w_h w_w) d -> b (nw_h w_h) (nw_w w_w) (heads d)",
                         w_h=self.window_size,
                         w_w=self.window_size,
