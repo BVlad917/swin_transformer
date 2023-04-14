@@ -35,8 +35,8 @@ class WindowAttention(nn.Module):
 
         self.to_qkv = nn.Linear(input_dim, inner_dim * 3, bias=False)
         self.to_out = nn.Linear(inner_dim, input_dim)
-        self.pos_embedding = nn.Parameter(torch.zeros(2 * window_size - 1, 2 * window_size - 1))
-        # (2 * WINDOW_SIZE - 1, 2 * WINDOW_SIZE - 1)
+        self.pos_embedding = nn.Parameter(torch.zeros(2 * window_size - 1, 2 * window_size - 1, heads))
+        # (2 * WINDOW_SIZE - 1, 2 * WINDOW_SIZE - 1, HEADS)
         self.relative_indices = get_relative_distances(window_size) + window_size - 1
         # (WINDOW_SIZE ** 2, WINDOW_SIZE ** 2, 2)
 
@@ -77,7 +77,11 @@ class WindowAttention(nn.Module):
         dots = dots * self.scale  # (B, HEADS, NUM_WINDOWS^2, WINDOW_SIZE^2, WINDOW_SIZE^2)
 
         # add positional embeddings
-        dots = dots + self.pos_embedding[self.relative_indices[:, :, 0], self.relative_indices[:, :, 1]]
+        rel_pos_embeddings = self.pos_embedding[self.relative_indices[:, :, 0], self.relative_indices[:, :, 1]]
+        # (WINDOW_SIZE^2, WINDOW_SIZE^2, HEADS)
+        rel_pos_embeddings = rearrange(rel_pos_embeddings, "i j h -> 1 h 1 i j")
+        # (HEADS, 1, WINDOW_SIZE^2, WINDOW_SIZE^2)
+        dots = dots + rel_pos_embeddings
         # (B, HEADS, NUM_WINDOWS^2, WINDOW_SIZE^2, WINDOW_SIZE^2)
 
         # apply the mask (if shifted), apply softmax, and apply dropout
