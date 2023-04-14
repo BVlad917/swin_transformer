@@ -40,10 +40,11 @@ def get_relative_distances(window_size):
     Example:
         - input: 2
         - output: matrix "distances" of shape (4, 4, 2). Element distances[1] would be
-        [[0, -1], [0, 0], [1, -1], [1, 0]] which correspond to the 2D representation:
+        [[0, -1], [0, 0], [1, -1], [1, 0]] which corresponds to the following 2D representation:
 
         [[0, -1]  [0, 0]
          [1, -1]  [1, 0]]
+
          which makes sense since the origin in this case is the upper right corner and the matrix
          is populated with the relative distances from this origin to every other position
     """
