@@ -68,11 +68,11 @@ class SwinTransformer(nn.Module):
         )
 
         # init weights
-        # self.apply(self._init_weights)
-        # self.stage1._init_norms()
-        # self.stage2._init_norms()
-        # self.stage3._init_norms()
-        # self.stage4._init_norms()
+        self.apply(self._init_weights)
+        self.stage1._init_norms()
+        self.stage2._init_norms()
+        self.stage3._init_norms()
+        self.stage4._init_norms()
 
     def forward(self, x):
         # input shape: (B, C, H, W)
